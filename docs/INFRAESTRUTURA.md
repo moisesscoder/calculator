@@ -4,13 +4,13 @@ Documentação da solução de integração e entrega contínua implementada par
 
 ## 1. Visão geral
 
-| Item | Valor |
-|---|---|
-| Instância | Ubuntu 24.04 — `52.67.244.182` |
-| Orquestrador | Jenkins LTS (JDK 17) em container Docker |
-| Agentes | 2 nós (`agent1`, `agent2`) em containers Ubuntu 24.04 |
-| Repositório | https://github.com/moisesscoder/calculator |
-| Label dos agentes | `cpp-build` |
+| Item              | Valor                                                 |
+| ----------------- | ----------------------------------------------------- |
+| Instância         | Ubuntu 24.04 — `52.67.244.182`                        |
+| Orquestrador      | Jenkins LTS (JDK 17) em container Docker              |
+| Agentes           | 2 nós (`agent1`, `agent2`) em containers Ubuntu 24.04 |
+| Repositório       | https://github.com/moisesscoder/calculator            |
+| Label dos agentes | `cpp-build`                                           |
 
 A stack roda via Docker Compose no diretório `infra/`. O controller Jenkins expõe a UI na porta 8080. Os agentes se conectam ao controller por SSH e executam os builds C++17.
 
@@ -60,8 +60,6 @@ Liberar a porta **8080** no Security Group da instância para acesso à UI do Je
 
 ### Evidências visuais
 
-> Salvar os prints na pasta `docs/images/` com os nomes indicados abaixo.
-
 **Dashboard Jenkins** — visão geral dos jobs configurados:
 
 ![Dashboard Jenkins](images/jenkins-dashboard.png)
@@ -80,9 +78,13 @@ Liberar a porta **8080** no Security Group da instância para acesso à UI do Je
 
 ```bash
 sudo apt update
-sudo apt install -y docker.io docker-compose-v2 git
+sudo apt install -y ca-certificates curl gnupg
+sudo install -m 0755 -d /etc/apt/keyrings
+curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu $(. /etc/os-release && echo $VERSION_CODENAME) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+sudo apt install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+sudo chmod a+r /etc/apt/keyrings/docker.gpg
 sudo usermod -aG docker ubuntu
-# reconectar SSH
 ```
 
 ### 4.2 Swap (obrigatório nesta instância)
@@ -98,6 +100,11 @@ echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab
 ```
 
 Confirmado via `dmesg`: processo `java` do container Jenkins morto com `anon-rss:388480kB` antes da criação do swap.
+
+```bash
+sudo dmesg | tail -30 | grep -i -E 'oom|killed'
+[40539.669394] oom-kill:constraint=CONSTRAINT_NONE,nodemask=(null),cpuset=systemd-resolved.service,mems_allowed=0,global_oom,task_memcg=/system.slice/docker-3c75032ee741efde42a6ba1247405e6ab95af1d9097ef97bcee8961ba75111ac.scope,task=java,pid=22166,uid=1000
+```
 
 ### 4.3 Subir a stack
 
@@ -137,17 +144,17 @@ O controller Jenkins apenas orquestra as execuções — agenda jobs, monitora e
 
 **Manage Jenkins → Nodes → New Node** (repetir para `agent1` e `agent2`):
 
-| Campo | Valor |
-|---|---|
-| Remote root directory | `/home/jenkins/workspace` |
-| Labels | `cpp-build` |
-| Usage | Deixar o processamento para atividades vinculadas |
-| Launch method | Launch agents via SSH |
-| Host | `agent1` / `agent2` (hostname na rede Docker) |
-| Credentials | `jenkins` / `jenkins` |
-| Host Key Verification | Non verifying Verification Strategy |
+| Campo                 | Valor                                             |
+| --------------------- | ------------------------------------------------- |
+| Remote root directory | `/home/jenkins/workspace`                         |
+| Labels                | `cpp-build`                                       |
+| Usage                 | Deixar o processamento para atividades vinculadas |
+| Launch method         | Launch agents via SSH                             |
+| Host                  | `agent1` / `agent2` (hostname na rede Docker)     |
+| Credentials           | `jenkins` / `jenkins`                             |
+| Host Key Verification | Non verifying Verification Strategy               |
 
-Os dois agentes devem aparecer **online** antes de executar pipelines.
+Os dois agentes aparecem **online** para a execução dos pipelines.
 
 ## 6. Pipelines
 
@@ -155,11 +162,11 @@ Todos os pipelines usam `Pipeline script from SCM` apontando para o repositório
 
 ### 6.1 `calculator-ci` — Integração contínua
 
-| Item | Detalhe |
-|---|---|
-| Script | `Jenkinsfile` |
+| Item    | Detalhe                                               |
+| ------- | ----------------------------------------------------- |
+| Script  | `Jenkinsfile`                                         |
 | Trigger | Webhook GitHub + SCM polling (`H/5 * * * *`) + manual |
-| Agente | `cpp-build` (definido no Jenkinsfile) |
+| Agente  | `cpp-build` (definido no Jenkinsfile)                 |
 
 O **SCM Polling** consulta periodicamente o repositório Git para detectar alterações e iniciar automaticamente o pipeline. Funciona como fallback caso o webhook não dispare. A expressão `H/5 * * * *` verifica a cada 5 minutos, com deslocamento aleatório (`H`) para evitar que todos os jobs consultem o Git no mesmo instante.
 
@@ -172,18 +179,18 @@ Estágios — qualquer falha derruba o build:
 
 ### 6.2 `artifact-build-manual` — Artefato sob demanda
 
-| Item | Detalhe |
-|---|---|
-| Script | `Jenkinsfile.artifact` |
-| Trigger | Somente manual |
+| Item    | Detalhe                |
+| ------- | ---------------------- |
+| Script  | `Jenkinsfile.artifact` |
+| Trigger | Somente manual         |
 
 Fluxo: checkout → build → armazenamento.
 
 ### 6.3 `artifact-build-daily` — Artefato agendado
 
-| Item | Detalhe |
-|---|---|
-| Script | `Jenkinsfile.artifact` |
+| Item    | Detalhe                            |
+| ------- | ---------------------------------- |
+| Script  | `Jenkinsfile.artifact`             |
 | Trigger | Cron `H 2 * * *` (diário, ~2h UTC) |
 
 Cópia do job manual com trigger periódico adicionado.
@@ -193,17 +200,18 @@ Cópia do job manual com trigger periódico adicionado.
 O pipeline `calculator-ci` também pode ser disparado automaticamente a cada push no repositório via webhook GitHub, sem depender exclusivamente do polling.
 
 **No Jenkins** (`calculator-ci` → Configurar → Triggers):
+
 - Marcar **GitHub hook trigger for GITScm polling**
 
 **No GitHub** (repositório → Settings → Webhooks → Add webhook):
 
-| Campo | Valor |
-|---|---|
-| Payload URL | `http://52.67.244.182:8080/github-webhook/` |
-| Content type | `application/json` |
-| Events | Just the push event |
+| Campo        | Valor                                       |
+| ------------ | ------------------------------------------- |
+| Payload URL  | `http://52.67.244.182:8080/github-webhook/` |
+| Content type | `application/json`                          |
+| Events       | Just the push event                         |
 
-A porta 8080 precisa estar acessível publicamente para o GitHub alcançar o endpoint. Após configurar, um push em `main` dispara o pipeline em segundos.
+A porta 8080 está acessível publicamente, portanto o GitHub alcança o endpoint. Após configurar, um push em `main` dispara o pipeline em segundos.
 
 Evidência de disparo automático — build iniciado por push no GitHub (`Started by GitHub push by moisesscoder`):
 
@@ -213,7 +221,7 @@ Evidência de disparo automático — build iniciado por push no GitHub (`Starte
 
 Dupla persistência:
 
-1. **Jenkins** — `archiveArtifacts` com fingerprint. Disponível na UI do build em *Artifacts*. Os artefatos ficam versionados por número de build — cada execução gera um diretório próprio (ex.: build `#3` contém o binário daquela execução específica).
+1. **Jenkins** — `archiveArtifacts` com fingerprint. Disponível na UI do build em _Artifacts_. Os artefatos ficam versionados por número de build — cada execução gera um diretório próprio (ex.: build `#3` contém o binário daquela execução específica).
 2. **Agente** — cópia em `/home/jenkins/artifacts/<job-name>/<build-number>/calculator`.
 
 Verificação no agente:
@@ -233,11 +241,11 @@ Exemplo validado:
 
 O repositório base continha problemas que impediam o pipeline de integração de passar. Corrigidos no fork antes de declarar o CI funcional:
 
-| Problema | Arquivo | Correção |
-|---|---|---|
-| Variáveis não inicializadas | `calculator/src/main.cpp` | Inicialização explícita (`double number1 = 0.0`) |
-| Divisão por zero sem tratamento | `calculator/src/calculator.hpp` | Guarda `if (number2 == 0) return 0` em `divide()` |
-| Formatação fora do padrão Google | `calculator/src/main.cpp` | `clang-format --style=google -i src/main.cpp` |
+| Problema                         | Arquivo                         | Correção                                          |
+| -------------------------------- | ------------------------------- | ------------------------------------------------- |
+| Variáveis não inicializadas      | `calculator/src/main.cpp`       | Inicialização explícita (`double number1 = 0.0`)  |
+| Divisão por zero sem tratamento  | `calculator/src/calculator.hpp` | Guarda `if (number2 == 0) return 0` em `divide()` |
+| Formatação fora do padrão Google | `calculator/src/main.cpp`       | `clang-format --style=google -i src/main.cpp`     |
 
 Sem essas correções, `make check` e `make unittest` falham — e o enunciado trata qualquer erro de estágio como crítico.
 
@@ -257,11 +265,6 @@ Sem essas correções, `make check` e `make unittest` falham — e o enunciado t
 
 **Causa:** Contenção de CPU/memória em ambiente virtualizado aninhado (observado em testes locais com Multipass).
 **Solução:** Executar a stack na instância da prova, onde os containers rodam diretamente no host.
-
-### Webhook não dispara o pipeline
-
-**Causa:** Porta 8080 bloqueada no Security Group ou URL incorreta.
-**Solução:** Liberar inbound na porta 8080; confirmar URL `http://<IP>:8080/github-webhook/` (com barra final). Verificar entrega em GitHub → Webhooks → Recent Deliveries.
 
 ## 10. Operação
 
