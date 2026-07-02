@@ -1,0 +1,54 @@
+pipeline {
+    agent {
+        label 'cpp-build'
+    }
+
+    options {
+        buildDiscarder(logRotator(numToKeepStr: '30'))
+        timestamps()
+    }
+
+    parameters {
+        choice(
+            name: 'REPO_BRANCH',
+            choices: ['main'],
+            description: 'Branch to build'
+        )
+    }
+
+    stages {
+        stage('Checkout') {
+            steps {
+                git branch: "${params.REPO_BRANCH}",
+                    url: 'https://github.com/moisesscoder/calculator.git'
+            }
+        }
+
+        stage('Build Artifact') {
+            steps {
+                dir('calculator') {
+                    sh 'make clean && make'
+                }
+            }
+        }
+
+        stage('Store Artifact') {
+            steps {
+                sh '''
+                    mkdir -p /home/jenkins/artifacts/${JOB_NAME}/${BUILD_NUMBER}
+                    cp calculator/bin/calculator /home/jenkins/artifacts/${JOB_NAME}/${BUILD_NUMBER}/
+                    ls -la /home/jenkins/artifacts/${JOB_NAME}/${BUILD_NUMBER}/
+                '''
+                archiveArtifacts artifacts: 'calculator/bin/calculator',
+                                 fingerprint: true,
+                                 allowEmptyArchive: false
+            }
+        }
+    }
+
+    post {
+        always {
+            cleanWs()
+        }
+    }
+}
