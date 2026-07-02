@@ -7,6 +7,8 @@ services:
       - "50000:50000"
     volumes:
       - jenkins_home:/var/jenkins_home
+    environment:
+      - JAVA_OPTS=-Xmx256m -XX:MaxMetaspaceSize=128m -XX:+UseSerialGC
     restart: unless-stopped
 
   agent1:
