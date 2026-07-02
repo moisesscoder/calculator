@@ -43,7 +43,7 @@ pipeline {
                 }
                 archiveArtifacts artifacts: 'calculator/bin/calculator',
                                  fingerprint: true,
-                                 allowEmptyArchive: false,
+                                 allowEmptyArchive: false
             }
         }
     }
