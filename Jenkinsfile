@@ -41,16 +41,14 @@ pipeline {
                 dir('calculator') {
                     sh 'make clean && make'
                 }
+                archiveArtifacts artifacts: 'calculator/bin/calculator',
+                                 fingerprint: true,
+                                 allowEmptyArchive: false,
             }
         }
     }
 
     post {
-        success {
-            archiveArtifacts artifacts: 'calculator/bin/calculator',
-                             fingerprint: true,
-                             allowEmptyArchive: false
-        }
         failure {
             echo 'Pipeline failed — any stage error is treated as critical.'
         }
