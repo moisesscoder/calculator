@@ -205,6 +205,10 @@ O pipeline `calculator-ci` também pode ser disparado automaticamente a cada pus
 
 A porta 8080 precisa estar acessível publicamente para o GitHub alcançar o endpoint. Após configurar, um push em `main` dispara o pipeline em segundos.
 
+Evidência de disparo automático — build iniciado por push no GitHub (`Started by GitHub push by moisesscoder`):
+
+![Build disparado via webhook](images/jenkins-webhook-trigger.png)
+
 ## 7. Armazenamento de artefatos
 
 Dupla persistência:
@@ -302,5 +306,6 @@ calculator/
     └── images/              # prints de evidência
         ├── jenkins-dashboard.png
         ├── jenkins-pipeline.png
-        └── jenkins-agents.png
+        ├── jenkins-agents.png
+        └── jenkins-webhook-trigger.png
 ```
