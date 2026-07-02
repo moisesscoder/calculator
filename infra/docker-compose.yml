@@ -1,0 +1,29 @@
+services:
+  jenkins:
+    image: jenkins/jenkins:lts-jdk17
+    container_name: jenkins
+    ports:
+      - "8080:8080"
+      - "50000:50000"
+    volumes:
+      - jenkins_home:/var/jenkins_home
+    restart: unless-stopped
+
+  agent1:
+    build:
+      context: .
+      dockerfile: Dockerfile.agent
+    container_name: jenkins-agent-1
+    hostname: agent1
+    restart: unless-stopped
+
+  agent2:
+    build:
+      context: .
+      dockerfile: Dockerfile.agent
+    container_name: jenkins-agent-2
+    hostname: agent2
+    restart: unless-stopped
+
+volumes:
+  jenkins_home:
