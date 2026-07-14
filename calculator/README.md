@@ -1,16 +1,18 @@
 # Calculator Example Project
+
 # Testing Pipe
 
 ## Prerequisites
+
 - GNU C++17 Compiler
 - Gtest Unit Test Library
 - Clang-tidy
 - Clang-format
 
-
 ## Building
 
 To build de program
+
 ```
 make
 ```
@@ -20,16 +22,19 @@ make
 # Checking code
 
 To scan the code for possible issues:
+
 ```
 make lint
 ```
 
 To scan the code for format issues:
+
 ```
 make format-check
 ```
 
 To scan the code for possible issues (lint+format):
+
 ```
 make check
 ```
@@ -37,8 +42,11 @@ make check
 ## Testing
 
 To compile tests
+
 ```
 make unittest
 ```
+
+#Test
 
 > Output will be placed at 'tests/bin'
